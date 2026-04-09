@@ -61,17 +61,41 @@ async function runAll() {
 
 // Logic untuk menentukan apakah jalan sekali atau terjadwal
 if (process.argv.includes('--cron')) {
-    console.log("MODE: Terjadwal (CRON) - Setiap jam 09:00 sampai 15:00 WIB");
-    // Jalankan sekali saat startup supaya data terbaru langsung ada
-    runAll();
+    const loc = "Asia/Jakarta";
+    console.log(`MODE: Terjadwal (CRON) - Jam 09:00 sampai 15:00 ${loc}`);
     
-    // Jadwalkan untuk setiap jam menit 0 dari jam 9-15
-    cron.schedule('0 9-15 * * *', () => {
-        runAll();
+    const now = new Date();
+    console.log(`Server Time (UTC): ${now.toISOString()}`);
+    console.log(`Target Time (${loc}): ${now.toLocaleString('id-ID', { timeZone: loc })}`);
+
+    // Jalankan sekali saat startup supaya data terbaru langsung ada
+    runAll().catch(err => console.error("Initial run failed:", err));
+    
+    // Heartbeat setiap 30 menit supaya tahu container masih hidup
+    setInterval(() => {
+        const timeStr = new Date().toLocaleString('id-ID', { timeZone: loc });
+        console.log(`[HEARTBEAT] Scraper aktif. Waktu Jakarta: ${timeStr}`);
+    }, 30 * 60 * 1000);
+
+    // Jadwalkan pengecekan setiap jam di menit 0
+    cron.schedule('0 * * * *', () => {
+        const jakartaHour = parseInt(new Date().toLocaleString('en-US', { 
+            timeZone: loc, 
+            hour: 'numeric', 
+            hour12: false 
+        }), 10);
+
+        console.log(`[CRON] Menit 0 terdeteksi. Jam Jakarta: ${jakartaHour}`);
+
+        if (jakartaHour >= 9 && jakartaHour <= 15) {
+            runAll().catch(err => console.error("Scheduled run failed:", err));
+        } else {
+            console.log(`[CRON] Di luar jam operasional (9-15). Lewati scrape.`);
+        }
     }, {
-        timezone: "Asia/Jakarta"
+        timezone: loc
     });
 } else {
     console.log("MODE: Sekali jalan (One-time)");
-    runAll();
+    runAll().catch(err => console.error("One-time run failed:", err));
 }
