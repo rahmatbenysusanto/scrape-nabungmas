@@ -29,5 +29,5 @@ ENV CHROME_PATH=/usr/bin/chromium
 ENV NODE_ENV=production
 
 # Jalankan PM2 sebagai process manager utama
-# Cron diatur setiap jam dari jam 9 pagi sampai 3 sore (0 9-15 * * *)
-CMD ["pm2-runtime", "start", "run_all.js", "--name", "gold-scraper", "--cron", "0 9-15 * * *", "--no-autorestart"]
+# Penjadwalan sekarang ditangani di dalam run_all.js menggunakan node-cron
+CMD ["pm2-runtime", "start", "run_all.js", "--name", "gold-scraper", "--", "--cron"]

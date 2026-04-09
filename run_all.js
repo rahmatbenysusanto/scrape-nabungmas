@@ -1,12 +1,14 @@
+const cron = require('node-cron');
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 const scripts = [
     { name: 'Antam', dir: 'antam', file: 'scrape_antam.js' },
     { name: 'EmasKita', dir: 'emaskita', file: 'scrape_emaskita.js' },
     { name: 'Emasku', dir: 'emasku', file: 'scrape_emasku.js' },
-    { name: 'Gallery24', dir: 'gallery24', file: 'scrape_gallery24.js' },
+    { name: 'Gallery24', dir: 'gallery24', logo: 'gallery24.png', file: 'scrape_gallery24.js' },
     { name: 'King Halim', dir: 'kinghalim', file: 'scrape_kinghalim.js' },
     { name: 'Lotus Archi', dir: 'lotusarchi', file: 'scrape_lotusarchi.js' },
     { name: 'Sampoerna Gold', dir: 'sampoerna', file: 'scrape_sampoerna.js' },
@@ -20,7 +22,7 @@ const scripts = [
 ];
 
 async function runAll() {
-    console.log("=== MEMULAI UPDATE SEMUA HARGA EMAS ===\n");
+    console.log(`[${new Date().toLocaleString('id-ID')}] === MEMULAI UPDATE SEMUA HARGA EMAS ===\n`);
 
     for (const script of scripts) {
         const fullPath = path.join(__dirname, script.dir, script.file);
@@ -43,8 +45,33 @@ async function runAll() {
             console.warn(`[${script.name}] File tidak ditemukan: ${fullPath}\n`);
         }
     }
+    
+    // Kirim notifikasi ringkasan ke backend setelah semua selesai
+    try {
+        console.log("Mengirim notifikasi ringkasan ke backend...");
+        await axios.post('https://api.nabungmas.my.id/api/gold-prices/notify-sync', {
+            total_brand: scripts.length
+        });
+    } catch (notifErr) {
+        console.error("Gagal mengirim notifikasi ringkasan:", notifErr.message);
+    }
 
-    console.log("=== SEMUA PROSES SELESAI ===");
+    console.log(`[${new Date().toLocaleString('id-ID')}] === SEMUA PROSES SELESAI ===\n`);
 }
 
-runAll();
+// Logic untuk menentukan apakah jalan sekali atau terjadwal
+if (process.argv.includes('--cron')) {
+    console.log("MODE: Terjadwal (CRON) - Setiap jam 09:00 sampai 15:00 WIB");
+    // Jalankan sekali saat startup supaya data terbaru langsung ada
+    runAll();
+    
+    // Jadwalkan untuk setiap jam menit 0 dari jam 9-15
+    cron.schedule('0 9-15 * * *', () => {
+        runAll();
+    }, {
+        timezone: "Asia/Jakarta"
+    });
+} else {
+    console.log("MODE: Sekali jalan (One-time)");
+    runAll();
+}
