@@ -1,0 +1,19 @@
+{
+  "name": "nabungmas-scraper",
+  "version": "1.0.0",
+  "description": "Unified gold scraper scripts",
+  "main": "run_all.js",
+  "scripts": {
+    "start": "node run_all.js",
+    "install-all": "npm install"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "cheerio": "^1.2.0",
+    "debug": "^4.4.3",
+    "puppeteer-core": "^24.38.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "xlsx": "^0.18.5"
+  }
+}

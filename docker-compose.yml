@@ -1,0 +1,23 @@
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nabungmas_scraper
+    volumes:
+      # Mount folder scrape saat ini ke /app di dalam container
+      # Ini berguna agar file .xlsx yang di-update scraper muncul di host (VPS)
+      - .:/app
+      # Kita ignore node_modules supaya tidak tumpang tindih dengan node_modules host (jika ada)
+      - /app/node_modules
+    environment:
+      - CHROME_PATH=/usr/bin/chromium
+      - TZ=Asia/Jakarta
+      - NODE_ENV=production
+    restart: always
+    networks:
+      - avora_network
+
+networks:
+  avora_network:
+    external: true
