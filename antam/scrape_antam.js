@@ -66,15 +66,22 @@ puppeteer.use(StealthPlugin());
         console.log("Mem-parsing data Harga Buyback...");
         const $sell = cheerio.load(htmlSell);
         let baseBuybackPrice = 0;
-        $sell('.title').each((i, el) => {
-            if ($sell(el).text().includes('Harga Buyback:')) {
-                const val = $sell(el).next('.value').text().trim();
-                if (val) {
-                    let cleaned = val.replace('Rp', '').replace(/,/g, '').replace(/\./g, '').trim();
-                    baseBuybackPrice = parseInt(cleaned, 10);
+        const baseBuybackInput = $sell('#valBasePrice');
+        if (baseBuybackInput.length > 0) {
+            baseBuybackPrice = Math.floor(parseFloat(baseBuybackInput.val()));
+        } else {
+            // Fallback to text matching if input not found
+            $sell('.title').each((i, el) => {
+                if ($sell(el).text().includes('Harga Buyback:')) {
+                    const valueEl = $sell(el).next('.value');
+                    const val = valueEl.find('.text').text().trim() || valueEl.text().trim();
+                    if (val) {
+                        let cleaned = val.replace('Rp', '').replace(/,/g, '').replace(/\./g, '').trim();
+                        baseBuybackPrice = parseInt(cleaned, 10);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         console.log("Harga Dasar Buyback:", baseBuybackPrice);
 

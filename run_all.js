@@ -21,7 +21,8 @@ const scripts = [
     { name: 'Emas Perhiasan', dir: 'emas-perhiasan', file: 'scrape_emas_perhiasan.js' },
     { name: 'Perak Perhiasan', dir: 'perak-perhiasan', file: 'scrape_perak_perhiasan.js' },
     { name: 'UBS Gold', dir: 'ubs', file: 'scrape_ubs.js' },
-    { name: 'Simba Gold', dir: 'simba', file: 'scrape_simba.js' }
+    { name: 'Simba Gold', dir: 'simba', file: 'scrape_simba.js' },
+    { name: 'Antam Stock', dir: 'antam-stock', file: 'scrape_antam_stock.js' }
 ];
 
 async function runAll() {
@@ -36,7 +37,7 @@ async function runAll() {
             try {
                 // Menjalankan script dengan cwd di folder masing-masing
                 // supaya file .xlsx tersimpan di folder yang benar
-                execSync(`node ${script.file}`, {
+                execSync(`"${process.execPath}" ${script.file}`, {
                     cwd: scriptDir,
                     stdio: 'inherit'
                 });
@@ -65,7 +66,7 @@ async function runAll() {
 // Logic untuk menentukan apakah jalan sekali atau terjadwal
 if (process.argv.includes('--cron')) {
     const loc = "Asia/Jakarta";
-    console.log(`MODE: Terjadwal (CRON) - Jam 09:00 sampai 15:00 ${loc}`);
+    console.log(`MODE: Terjadwal (CRON) - Jam 07:00 sampai 15:00 ${loc}`);
     
     const now = new Date();
     console.log(`Server Time (UTC): ${now.toISOString()}`);
@@ -90,10 +91,10 @@ if (process.argv.includes('--cron')) {
 
         console.log(`[CRON] Menit 0 terdeteksi. Jam Jakarta: ${jakartaHour}`);
 
-        if (jakartaHour >= 9 && jakartaHour <= 15) {
+        if (jakartaHour >= 7 && jakartaHour <= 15) {
             runAll().catch(err => console.error("Scheduled run failed:", err));
         } else {
-            console.log(`[CRON] Di luar jam operasional (9-15). Lewati scrape.`);
+            console.log(`[CRON] Di luar jam operasional (7-15). Lewati scrape.`);
         }
     }, {
         timezone: loc
