@@ -17,6 +17,9 @@ const scripts = [
     { name: 'Dinar Khoirur Rooziqiin', dir: 'dinar', file: 'scrape_dinar.js' },
     { name: 'Tring Pegadaian', dir: 'tring', file: 'scrape_tring.js' },
     { name: 'Emas Cukim', dir: 'cukim', file: 'scrape_cukim.js' },
+    { name: 'Perak Cukim', dir: 'perak-cukim', file: 'scrape_perak_cukim.js' },
+    { name: 'Emas Perhiasan', dir: 'emas-perhiasan', file: 'scrape_emas_perhiasan.js' },
+    { name: 'Perak Perhiasan', dir: 'perak-perhiasan', file: 'scrape_perak_perhiasan.js' },
     { name: 'UBS Gold', dir: 'ubs', file: 'scrape_ubs.js' },
     { name: 'Simba Gold', dir: 'simba', file: 'scrape_simba.js' }
 ];
