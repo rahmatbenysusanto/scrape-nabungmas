@@ -66,12 +66,17 @@ async function scrapeAntamStock() {
                     const colText = $(cols[j]).text().trim().replace(/\\n/g, ' ');
                     const price = extractPrice(colText);
                     const stockText = extractStock(colText);
-                    // Skip if boutique header is empty or undefined
-                    if (!boutiques[j] || boutiques[j] === '') continue;
+                    
+                    // The boutiques array comes from the last tr of thead, 
+                    // which usually skips the 'Gramasi' column due to rowspan.
+                    // So boutiques[0] matches cols[1], boutiques[1] matches cols[2], etc.
+                    const boutiqueName = boutiques[j - 1];
+
+                    if (!boutiqueName || boutiqueName === '') continue;
 
                     payload.push({
                         region: region.name,
-                        boutique: boutiques[j],
+                        boutique: boutiqueName,
                         weight: weightText,
                         price: price,
                         stock_text: stockText
