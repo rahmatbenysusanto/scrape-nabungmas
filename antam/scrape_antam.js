@@ -122,8 +122,7 @@ puppeteer.use(StealthPlugin());
                 weight: beratNum,
                 price_buy: priceBuyItem,
                 price_buy_back: priceBuyBackItem,
-                type: category.toLowerCase().includes('perak') ? 'silver' : 'gold',
-                parent: beratNum === 1 // Set 1 gram as parent for example, standard convention
+                type: category.toLowerCase().includes('perak') ? 'silver' : 'gold'
             });
         });
 

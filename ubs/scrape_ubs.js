@@ -146,8 +146,7 @@ const buybackLink = 'https://ubslifestyle.com/harga-buyback-hari-ini/';
                 category_name: p.Category,
                 weight: p.Berat,
                 price_buy: p.Harga,
-                price_buy_back: p.Buyback,
-                parent: p.Berat === 1
+                price_buy_back: p.Buyback
             }));
 
         console.log(`[${brandName}] Sinkronisasi ke Backend API...`);

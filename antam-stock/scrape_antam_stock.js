@@ -23,7 +23,7 @@ function extractStock(text) {
     if (match) {
         return match[1].trim();
     }
-    return "Unknown";
+    return "Sold Out";
 }
 
 async function scrapeAntamStock() {
