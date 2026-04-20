@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
@@ -25,29 +25,55 @@ const scripts = [
     { name: 'Antam Stock', dir: 'antam-stock', file: 'scrape_antam_stock.js' }
 ];
 
-async function runAll() {
-    console.log(`[${new Date().toLocaleString('id-ID')}] === MEMULAI UPDATE SEMUA HARGA EMAS ===\n`);
+// Mutex sederhana agar tidak ada dua proses runAll yang jalan bersamaan
+let isRunning = false;
 
-    for (const script of scripts) {
+function runScript(script) {
+    return new Promise((resolve) => {
         const fullPath = path.join(__dirname, script.dir, script.file);
         const scriptDir = path.join(__dirname, script.dir);
 
-        if (fs.existsSync(fullPath)) {
-            console.log(`[${script.name}] Menjalankan scrape ${script.file}...`);
-            try {
-                // Menjalankan script dengan cwd di folder masing-masing
-                // supaya file .xlsx tersimpan di folder yang benar
-                execSync(`"${process.execPath}" ${script.file}`, {
-                    cwd: scriptDir,
-                    stdio: 'inherit'
-                });
-                console.log(`[${script.name}] BERHASIL!\n`);
-            } catch (error) {
-                console.error(`[${script.name}] GAGAL: ${error.message}\n`);
-            }
-        } else {
+        if (!fs.existsSync(fullPath)) {
             console.warn(`[${script.name}] File tidak ditemukan: ${fullPath}\n`);
+            return resolve();
         }
+
+        console.log(`[${script.name}] Menjalankan scrape ${script.file}...`);
+        
+        // Jalankan script secara async agar tidak memblock event loop utama
+        const child = exec(`"${process.execPath}" ${script.file}`, {
+            cwd: scriptDir,
+            timeout: 8 * 60 * 1000, // Timeout 8 menit per script
+            maxBuffer: 10 * 1024 * 1024 // Buffer 10MB
+        }, (error, stdout, stderr) => {
+            if (error) {
+                if (error.killed) {
+                    console.error(`[${script.name}] GAGAL: Timeout terdeteksi (8 menit)!\n`);
+                } else {
+                    console.error(`[${script.name}] GAGAL: ${error.message}\n`);
+                }
+            } else {
+                console.log(`[${script.name}] BERHASIL!\n`);
+            }
+            resolve();
+        });
+
+        // Optional: Jika ingin log live dari sub-process muncul di log Docker
+        // child.stdout.on('data', (data) => process.stdout.write(`[${script.name}] ${data}`));
+    });
+}
+
+async function runAll() {
+    if (isRunning) {
+        console.warn(`[${new Date().toLocaleString('id-ID')}] Skip: Proses sebelumnya masih berjalan.`);
+        return;
+    }
+
+    isRunning = true;
+    console.log(`[${new Date().toLocaleString('id-ID')}] === MEMULAI UPDATE SEMUA HARGA EMAS ===\n`);
+
+    for (const script of scripts) {
+        await runScript(script);
     }
     
     // Kirim notifikasi ringkasan ke backend setelah semua selesai
@@ -61,24 +87,28 @@ async function runAll() {
     }
 
     console.log(`[${new Date().toLocaleString('id-ID')}] === SEMUA PROSES SELESAI ===\n`);
+    isRunning = false;
 }
 
 // Logic untuk menentukan apakah jalan sekali atau terjadwal
 if (process.argv.includes('--cron')) {
     const loc = "Asia/Jakarta";
-    console.log(`MODE: Terjadwal (CRON) - Jam 07:00 sampai 15:00 ${loc}`);
+    console.log(`MODE: Terjadwal (CRON) - Jam 07:00 sampai 21:00 ${loc}`);
     
     const now = new Date();
     console.log(`Server Time (UTC): ${now.toISOString()}`);
     console.log(`Target Time (${loc}): ${now.toLocaleString('id-ID', { timeZone: loc })}`);
 
-    // Jalankan sekali saat startup supaya data terbaru langsung ada
-    runAll().catch(err => console.error("Initial run failed:", err));
+    // Jalankan sekali saat startup
+    runAll().catch(err => {
+        console.error("Initial run failed:", err);
+        isRunning = false;
+    });
     
-    // Heartbeat setiap 30 menit supaya tahu container masih hidup
+    // Heartbeat setiap 30 menit
     setInterval(() => {
         const timeStr = new Date().toLocaleString('id-ID', { timeZone: loc });
-        console.log(`[HEARTBEAT] Scraper aktif. Waktu Jakarta: ${timeStr}`);
+        console.log(`[HEARTBEAT] Scraper aktif. Waktu Jakarta: ${timeStr} | Running: ${isRunning}`);
     }, 30 * 60 * 1000);
 
     // Jadwalkan pengecekan setiap jam di menit 0
@@ -91,15 +121,23 @@ if (process.argv.includes('--cron')) {
 
         console.log(`[CRON] Menit 0 terdeteksi. Jam Jakarta: ${jakartaHour}`);
 
-        if (jakartaHour >= 7 && jakartaHour <= 15) {
-            runAll().catch(err => console.error("Scheduled run failed:", err));
+        // Rentang jam operasional diperluas ke 07:00 - 21:00
+        if (jakartaHour >= 7 && jakartaHour <= 21) {
+            runAll().catch(err => {
+                console.error("Scheduled run failed:", err);
+                isRunning = false;
+            });
         } else {
-            console.log(`[CRON] Di luar jam operasional (7-15). Lewati scrape.`);
+            console.log(`[CRON] Di luar jam operasional (7-21). Lewati scrape.`);
         }
     }, {
         timezone: loc
     });
 } else {
     console.log("MODE: Sekali jalan (One-time)");
-    runAll().catch(err => console.error("One-time run failed:", err));
+    runAll().catch(err => {
+        console.error("One-time run failed:", err);
+        isRunning = false;
+    });
 }
+
