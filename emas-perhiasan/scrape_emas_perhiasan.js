@@ -8,12 +8,21 @@ const excelFile = 'emas_perhiasan.xlsx';
 const antamExcelPath = path.join(__dirname, '../antam/antam.xlsx');
 
 const kadarList = [
+    { name: 'Kadar 10K', purity: 0.416 },
+    { name: 'Kadar 11K', purity: 0.458 },
+    { name: 'Kadar 12K', purity: 0.500 },
+    { name: 'Kadar 13K', purity: 0.541 },
     { name: 'Kadar 14K', purity: 0.583 },
+    { name: 'Kadar 15K', purity: 0.625 },
     { name: 'Kadar 16K', purity: 0.666 },
-    { name: 'Kadar 17K', purity: 0.70 },
-    { name: 'Kadar 18K', purity: 0.75 },
+    { name: 'Kadar 17K', purity: 0.708 },
+    { name: 'Kadar 18K', purity: 0.750 },
+    { name: 'Kadar 19K', purity: 0.791 },
+    { name: 'Kadar 20K', purity: 0.833 },
+    { name: 'Kadar 21K', purity: 0.875 },
     { name: 'Kadar 22K', purity: 0.916 },
-    { name: 'Kadar 24K', purity: 1.0 }
+    { name: 'Kadar 23K', purity: 0.958 },
+    { name: 'Kadar 24K', purity: 1.000 }
 ];
 
 (async () => {
