@@ -89,39 +89,93 @@ puppeteer.use(StealthPlugin());
         console.log("Membaca antam.xlsx...");
         const workbook = xlsx.readFile('antam.xlsx');
         const sheetName = workbook.SheetNames[0];
-        const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        let data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        // Cari referensi kenaikan Antam (Emas Batangan 1g)
+        let antamDeltaBuy = 0;
+        let antamDeltaBuyback = 0;
+        let foundAntamRef = false;
+
+        const antamRefRow = data.find(row => 
+            row['Brand'] === 'Antam' && 
+            row['Category'] === 'Emas Batangan' && 
+            row['Berat'].toString().replace(',', '.') === '1'
+        );
+
+        if (antamRefRow) {
+            const oldBuy = parseInt(antamRefRow['Harga']) || 0;
+            const oldBuyback = parseInt(antamRefRow['Buyback']) || 0;
+            
+            // Dapatkan harga baru dari web
+            const newBuy = pricesBuy['Emas Batangan'] && pricesBuy['Emas Batangan'][1] ? pricesBuy['Emas Batangan'][1] : oldBuy;
+            const newBuyback = baseBuybackPrice; // 1g buyback adalah base price
+
+            antamDeltaBuy = newBuy - oldBuy;
+            antamDeltaBuyback = newBuyback - oldBuyback;
+            foundAntamRef = true;
+            console.log(`Antam 1g Delta: Buy=${antamDeltaBuy}, Buyback=${antamDeltaBuyback}`);
+        }
+
+        // Cek apakah Brankas Antam sudah ada, jika belum tambahkan ke data
+        let brankasRow = data.find(row => 
+            row['Brand'] === 'Brankas Antam' && 
+            row['Category'] === 'Emas Digital'
+        );
+
+        if (!brankasRow) {
+            console.log("Menambahkan brand Brankas Antam Category Emas Digital ke Excel...");
+            // Inisialisasi awal jika belum ada, pakai harga Antam 1g sebagai basis
+            const initBuy = antamRefRow ? (parseInt(antamRefRow['Harga']) || 0) : 0;
+            const initBuyback = antamRefRow ? (parseInt(antamRefRow['Buyback']) || 0) : 0;
+            
+            brankasRow = {
+                'Brand': 'Brankas Antam',
+                'Category': 'Emas Digital',
+                'Berat': 1,
+                'Harga': initBuy,
+                'Buyback': initBuyback
+            };
+            data.push(brankasRow);
+        }
 
         let apiPayload = [];
 
         console.log("Memperbarui harga...");
         data.forEach(row => {
             const category = row['Category'];
+            const brand = row['Brand'];
             let rowBerat = row['Berat'].toString().replace(',', '.');
             const beratNum = parseFloat(rowBerat);
 
-            // Update Harga Beli
-            let priceBuyItem = 0;
-            if (pricesBuy[category] && pricesBuy[category][beratNum]) {
-                priceBuyItem = pricesBuy[category][beratNum];
-                row['Harga'] = priceBuyItem;
+            if (brand === 'Brankas Antam' && category === 'Emas Digital') {
+                // Logic khusus Brankas Antam: Mengikuti kenaikan/penurunan Antam
+                if (foundAntamRef) {
+                    row['Harga'] = (parseInt(row['Harga']) || 0) + antamDeltaBuy;
+                    row['Buyback'] = (parseInt(row['Buyback']) || 0) + antamDeltaBuyback;
+                    console.log(`Updated Brankas Antam: Buy=${row['Harga']}, Buyback=${row['Buyback']}`);
+                }
             } else {
-                console.log(`Harga beli untuk ${category} - ${rowBerat}g tidak ditemukan di web.`);
-                priceBuyItem = row['Harga'] || 0; // fallback to existing or 0
-            }
+                // Update Harga Beli dari Web (untuk brand Antam reguler)
+                if (pricesBuy[category] && pricesBuy[category][beratNum]) {
+                    row['Harga'] = pricesBuy[category][beratNum];
+                } else {
+                    console.log(`Harga beli untuk ${category} - ${rowBerat}g tidak ditemukan di web.`);
+                }
 
-            // Update Harga Buyback
-            let priceBuyBackItem = baseBuybackPrice * beratNum;
-            if (category.toLowerCase().includes('perak')) {
-                priceBuyBackItem = priceBuyItem; // Untuk perak, harga buyback disamakan dengan harga beli
+                // Update Harga Buyback
+                let priceBuyBackItem = Math.floor(baseBuybackPrice * beratNum);
+                if (category.toLowerCase().includes('perak')) {
+                    priceBuyBackItem = row['Harga']; // Untuk perak, harga buyback disamakan dengan harga beli
+                }
+                row['Buyback'] = priceBuyBackItem;
             }
-            row['Buyback'] = priceBuyBackItem;
 
             apiPayload.push({
                 brand_name: row['Brand'],
                 category_name: category,
                 weight: beratNum,
-                price_buy: priceBuyItem,
-                price_buy_back: priceBuyBackItem,
+                price_buy: row['Harga'],
+                price_buy_back: row['Buyback'],
                 type: category.toLowerCase().includes('perak') ? 'silver' : 'gold'
             });
         });
