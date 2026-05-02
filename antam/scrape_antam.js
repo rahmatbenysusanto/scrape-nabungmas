@@ -17,11 +17,11 @@ puppeteer.use(StealthPlugin());
         const page = await browser.newPage();
 
         console.log("Mengakses web antam (Harga Beli)...");
-        await page.goto('https://logammulia.com/id/harga-emas-hari-ini', { waitUntil: 'networkidle2' });
+        await page.goto('https://www.logammulia.com/id/harga-emas-hari-ini', { waitUntil: 'networkidle2' });
         const htmlBuy = await page.content();
 
         console.log("Mengakses web antam (Harga Buyback)...");
-        await page.goto('https://logammulia.com/id/sell/gold', { waitUntil: 'networkidle2' });
+        await page.goto('https://www.logammulia.com/id/sell/gold', { waitUntil: 'networkidle2' });
         const htmlSell = await page.content();
 
         await browser.close();
