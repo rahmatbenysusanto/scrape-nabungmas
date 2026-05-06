@@ -61,6 +61,13 @@ puppeteer.use(StealthPlugin());
                 }
             }
         });
+        
+        // Validasi: Pastikan ada data yang ter-parse
+        const categoryCount = Object.keys(pricesBuy).length;
+        console.log(`Berhasil mem-parsing ${categoryCount} kategori harga beli.`);
+        if (categoryCount === 0) {
+            throw new Error("Gagal mem-parsing data harga beli. Website mungkin berubah atau diblokir.");
+        }
 
         // 2. Parse Harga Buyback Dasar
         console.log("Mem-parsing data Harga Buyback...");
@@ -211,6 +218,7 @@ puppeteer.use(StealthPlugin());
         console.log("Selesai!");
 
     } catch (e) {
-        console.error(e);
+        console.error("CRITICAL ERROR:", e.message);
+        process.exit(1);
     }
 })();

@@ -55,6 +55,12 @@ puppeteer.use(StealthPlugin());
                 }
             });
         });
+        
+        // Validasi: Pastikan ada data yang ter-parse
+        console.log(`Berhasil mem-parsing ${webPrices.length} baris harga dari web.`);
+        if (webPrices.length === 0) {
+            throw new Error("Gagal mem-parsing data dari web. Website mungkin berubah atau diblokir.");
+        }
 
         // 3. Update Excel dari data yang sudah disiapkan User
         console.log("Membaca emaskita.xlsx...");
@@ -121,6 +127,7 @@ puppeteer.use(StealthPlugin());
         console.log("Selesai!");
 
     } catch (e) {
-        console.error(e);
+        console.error("CRITICAL ERROR:", e.message);
+        process.exit(1);
     }
 })();

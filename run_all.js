@@ -35,16 +35,15 @@ function runScript(script) {
 
         if (!fs.existsSync(fullPath)) {
             console.warn(`[${script.name}] File tidak ditemukan: ${fullPath}\n`);
-            return resolve();
+            return resolve(false);
         }
 
         console.log(`[${script.name}] Menjalankan scrape ${script.file}...`);
         
-        // Jalankan script secara async agar tidak memblock event loop utama
         const child = exec(`"${process.execPath}" ${script.file}`, {
             cwd: scriptDir,
-            timeout: 8 * 60 * 1000, // Timeout 8 menit per script
-            maxBuffer: 10 * 1024 * 1024 // Buffer 10MB
+            timeout: 8 * 60 * 1000, 
+            maxBuffer: 10 * 1024 * 1024 
         }, (error, stdout, stderr) => {
             if (error) {
                 if (error.killed) {
@@ -52,14 +51,15 @@ function runScript(script) {
                 } else {
                     console.error(`[${script.name}] GAGAL: ${error.message}\n`);
                 }
+                resolve(false);
             } else {
                 console.log(`[${script.name}] BERHASIL!\n`);
+                resolve(true);
             }
-            resolve();
         });
 
-        // Optional: Jika ingin log live dari sub-process muncul di log Docker
-        // child.stdout.on('data', (data) => process.stdout.write(`[${script.name}] ${data}`));
+        child.stdout.on('data', (data) => process.stdout.write(`[${script.name}] ${data}`));
+        child.stderr.on('data', (data) => process.stderr.write(`[${script.name}] ERR: ${data}`));
     });
 }
 
@@ -72,21 +72,28 @@ async function runAll() {
     isRunning = true;
     console.log(`[${new Date().toLocaleString('id-ID')}] === MEMULAI UPDATE SEMUA HARGA EMAS ===\n`);
 
+    let successCount = 0;
+    let failCount = 0;
+
     for (const script of scripts) {
-        await runScript(script);
+        const success = await runScript(script);
+        if (success) successCount++;
+        else failCount++;
     }
     
     // Kirim notifikasi ringkasan ke backend setelah semua selesai
     try {
         console.log("Mengirim notifikasi ringkasan ke backend...");
         await axios.post('https://api.nabungmas.my.id/api/gold-prices/notify-sync', {
-            total_brand: scripts.length
+            total_brand: scripts.length,
+            success_count: successCount,
+            fail_count: failCount
         });
     } catch (notifErr) {
         console.error("Gagal mengirim notifikasi ringkasan:", notifErr.message);
     }
 
-    console.log(`[${new Date().toLocaleString('id-ID')}] === SEMUA PROSES SELESAI ===\n`);
+    console.log(`[${new Date().toLocaleString('id-ID')}] === SEMUA PROSES SELESAI (Berhasil: ${successCount}, Gagal: ${failCount}) ===\n`);
     isRunning = false;
 }
 
