@@ -8,6 +8,7 @@ const excelFile = 'emas_perhiasan.xlsx';
 const antamExcelPath = path.join(__dirname, '../antam/antam.xlsx');
 
 const kadarList = [
+    { name: 'Kadar 8K', purity: 0.333 },
     { name: 'Kadar 10K', purity: 0.416 },
     { name: 'Kadar 11K', purity: 0.458 },
     { name: 'Kadar 12K', purity: 0.500 },

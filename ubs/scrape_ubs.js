@@ -23,26 +23,46 @@ const buybackLink = 'https://ubslifestyle.com/harga-buyback-hari-ini/';
         const page = await browser.newPage();
         await page.setViewport({ width: 1200, height: 1000 });
 
-        // 1. Scraping Buyback Prices
+        // 1. Scraping Buyback Prices & Classic Category
         console.log(`[${brandName}] Mengambil harga buyback...`);
         await page.goto(buybackLink, { waitUntil: 'networkidle2', timeout: 60000 });
         const buybackHtml = await page.content();
         const $bb = cheerio.load(buybackHtml);
         
         const buybackRates = {}; 
+        const products = []; // Inisialisasi products di sini agar bisa diisi Classic dari table
+        
         $bb('table tr').each((i, el) => {
             const tds = $bb(el).find('td');
-            if (tds.length >= 2) {
+            if (tds.length >= 3) { // Kolom: Pecahan, Harga Beli, Harga Jual (Buyback)
                 const weightText = $bb(tds[0]).text().trim().toLowerCase().replace(' gr', '').replace(' gram', '').replace(',', '.');
-                const priceText = $bb(tds[1]).text().trim().replace(/Rp/g, '').replace(/\./g, '').replace(/,/g, '').trim();
+                const buyText = $bb(tds[1]).text().trim().replace(/Rp/g, '').replace(/\./g, '').replace(/,/g, '').trim();
+                const buybackText = $bb(tds[2]).text().trim().replace(/Rp/g, '').replace(/\./g, '').replace(/,/g, '').trim();
+                
                 const weightNum = parseFloat(weightText);
-                const priceNum = parseInt(priceText, 10);
-                if (!isNaN(weightNum) && !isNaN(priceNum)) {
-                    buybackRates[weightNum] = priceNum;
+                const priceBuyNum = parseInt(buyText, 10);
+                const priceBuybackNum = parseInt(buybackText, 10);
+                
+                if (!isNaN(weightNum)) {
+                    if (!isNaN(priceBuybackNum)) {
+                        buybackRates[weightNum] = priceBuybackNum;
+                    }
+                    
+                    // Masukkan sebagai kategori Classic langsung dari tabel ini
+                    if (!isNaN(priceBuyNum) && !isNaN(priceBuybackNum)) {
+                        products.push({
+                            Brand: brandName,
+                            Category: 'Classic',
+                            Berat: weightNum,
+                            Harga: priceBuyNum,
+                            Buyback: priceBuybackNum,
+                            Title: `UBS Gold Classic ${weightNum} Gram`
+                        });
+                    }
                 }
             }
         });
-        console.log(`[${brandName}] Berhasil memetakan data buyback.`);
+        console.log(`[${brandName}] Berhasil memetakan data buyback dan kategori Classic.`);
 
         // 2. Scraping Product List (Selling Prices)
         console.log(`[${brandName}] Mengakses katalog produk Fine Gold (Halaman Berat)...`);
@@ -59,7 +79,6 @@ const buybackLink = 'https://ubslifestyle.com/harga-buyback-hari-ini/';
         const buyHtml = await page.content();
         const $buy = cheerio.load(buyHtml);
         
-        const products = [];
         $buy('.as-producttile').each((i, el) => {
             const title = $buy(el).find('.as-producttile-tilelink').text().trim();
             // Harga biasanya ada di dalam .as-producttile-info atau elemen sibling
