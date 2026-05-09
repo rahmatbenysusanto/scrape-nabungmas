@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { exec } = require('child_process');
+const { execFile, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
@@ -28,7 +28,24 @@ const scripts = [
 // Mutex sederhana agar tidak ada dua proses runAll yang jalan bersamaan
 let isRunning = false;
 
-function runScript(script) {
+// Fungsi untuk delay antar scraper (mengurangi spike resource)
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Fungsi untuk membersihkan proses chromium zombie sebelum run
+function killZombieChrome() {
+    try {
+        // Kill semua proses chromium yang masih berjalan
+        execSync('pkill -f chromium || true', { stdio: 'ignore' });
+        execSync('pkill -f chrome || true', { stdio: 'ignore' });
+        console.log('[CLEANUP] Proses chromium zombie sudah dibersihkan.');
+    } catch (e) {
+        // Abaikan error jika tidak ada proses yang perlu di-kill
+    }
+}
+
+function runScript(script, retryCount = 0) {
     return new Promise((resolve) => {
         const fullPath = path.join(__dirname, script.dir, script.file);
         const scriptDir = path.join(__dirname, script.dir);
@@ -38,16 +55,24 @@ function runScript(script) {
             return resolve(false);
         }
 
-        console.log(`[${script.name}] Menjalankan scrape ${script.file}...`);
+        console.log(`[${script.name}] Menjalankan scrape ${script.file}...${retryCount > 0 ? ` (retry ke-${retryCount})` : ''}`);
         
-        const child = exec(`"${process.execPath}" ${script.file}`, {
+        // Gunakan execFile langsung tanpa shell /bin/sh sebagai perantara
+        // Ini menghemat 1 proses per scraper dan menghindari EAGAIN
+        const child = execFile(process.execPath, [script.file], {
             cwd: scriptDir,
             timeout: 8 * 60 * 1000, 
             maxBuffer: 10 * 1024 * 1024 
-        }, (error, stdout, stderr) => {
+        }, async (error, stdout, stderr) => {
             if (error) {
                 if (error.killed) {
                     console.error(`[${script.name}] GAGAL: Timeout terdeteksi (8 menit)!\n`);
+                } else if (error.code === 'EAGAIN' && retryCount < 2) {
+                    // Retry untuk error EAGAIN (resource sementara tidak tersedia)
+                    console.warn(`[${script.name}] EAGAIN terdeteksi, cleanup & retry dalam 10 detik...\n`);
+                    killZombieChrome();
+                    await delay(10000);
+                    return resolve(await runScript(script, retryCount + 1));
                 } else {
                     console.error(`[${script.name}] GAGAL: ${error.message}\n`);
                 }
@@ -72,13 +97,22 @@ async function runAll() {
     isRunning = true;
     console.log(`[${new Date().toLocaleString('id-ID')}] === MEMULAI UPDATE SEMUA HARGA EMAS ===\n`);
 
+    // Bersihkan proses zombie sebelum mulai
+    killZombieChrome();
+
     let successCount = 0;
     let failCount = 0;
 
-    for (const script of scripts) {
+    for (let i = 0; i < scripts.length; i++) {
+        const script = scripts[i];
         const success = await runScript(script);
         if (success) successCount++;
         else failCount++;
+
+        // Delay 3 detik antar scraper untuk memberi waktu OS reclaim resource
+        if (i < scripts.length - 1) {
+            await delay(3000);
+        }
     }
     
     // Kirim notifikasi ringkasan ke backend setelah semua selesai

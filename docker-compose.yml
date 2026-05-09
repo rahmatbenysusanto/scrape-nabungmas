@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nabungmas_scraper
+    init: true  # Gunakan tini sebagai init process untuk reap zombie processes
+    pids_limit: 512  # Batasi jumlah PID agar tidak kehabisan resource
+    shm_size: '1gb'  # Tambah shared memory untuk Chromium agar tidak crash
     volumes:
       # Mount folder scrape saat ini ke /app di dalam container
       # Ini berguna agar file .xlsx yang di-update scraper muncul di host (VPS)
