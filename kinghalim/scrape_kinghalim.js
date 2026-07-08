@@ -9,14 +9,12 @@ puppeteer.use(StealthPlugin());
 (async () => {
     try {
         console.log("Membuka browser...");
-        // Gunakan puppeteer-core dengan path chrome yang sesuai (macOS)
-        const browser = require('puppeteer-core').launch({
+        const browser = await puppeteer.launch({
             executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
             headless: 'new',
             args: ['--no-sandbox']
         });
-        const browserObj = await browser;
-        const page = await browserObj.newPage();
+        const page = await browser.newPage();
 
         console.log("Mengakses web King Halim...");
         await page.goto('https://www.kinghalim.com/goldbarwithamala', { waitUntil: 'networkidle2' });
@@ -25,7 +23,7 @@ puppeteer.use(StealthPlugin());
         await new Promise(r => setTimeout(r, 2000));
 
         const html = await page.content();
-        await browserObj.close();
+        await browser.close();
 
         console.log("Mem-parsing data King Halim...");
         const $ = cheerio.load(html);
