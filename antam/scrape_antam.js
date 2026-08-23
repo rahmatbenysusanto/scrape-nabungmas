@@ -165,6 +165,10 @@ puppeteer.use(StealthPlugin());
                 // Update Harga Beli dari Web (untuk brand Antam reguler)
                 if (pricesBuy[category] && pricesBuy[category][beratNum]) {
                     row['Harga'] = pricesBuy[category][beratNum];
+                } else if (foundAntamRef) {
+                    // Produk tidak ditemukan di web (discontinued), ikuti delta Antam per gram
+                    row['Harga'] = (parseInt(row['Harga']) || 0) + Math.round(antamDeltaBuy * beratNum);
+                    console.log(`Harga beli untuk ${category} - ${rowBerat}g tidak ditemukan di web, mengikuti delta Antam (${antamDeltaBuy > 0 ? '+' : ''}${Math.round(antamDeltaBuy * beratNum)}).`);
                 } else {
                     console.log(`Harga beli untuk ${category} - ${rowBerat}g tidak ditemukan di web.`);
                 }

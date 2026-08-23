@@ -45,6 +45,16 @@ function killZombieChrome() {
     }
 }
 
+function parseWarnings(output) {
+    const warnings = [];
+    const lines = output.split('\n');
+    for (const line of lines) {
+        const match = line.match(/Harga (?:beli|buyback) untuk (.+?) tidak ditemukan/i);
+        if (match) warnings.push(match[1].trim());
+    }
+    return warnings;
+}
+
 function runScript(script, retryCount = 0) {
     return new Promise((resolve) => {
         const fullPath = path.join(__dirname, script.dir, script.file);
@@ -52,23 +62,24 @@ function runScript(script, retryCount = 0) {
 
         if (!fs.existsSync(fullPath)) {
             console.warn(`[${script.name}] File tidak ditemukan: ${fullPath}\n`);
-            return resolve(false);
+            return resolve({ success: false, warnings: [], errorMsg: 'File tidak ditemukan' });
         }
 
         console.log(`[${script.name}] Menjalankan scrape ${script.file}...${retryCount > 0 ? ` (retry ke-${retryCount})` : ''}`);
-        
-        // Gunakan execFile langsung tanpa shell /bin/sh sebagai perantara
-        // Ini menghemat 1 proses per scraper dan menghindari EAGAIN
+
+        let outputBuffer = '';
+
         const child = execFile(process.execPath, [script.file], {
             cwd: scriptDir,
-            timeout: 8 * 60 * 1000, 
-            maxBuffer: 10 * 1024 * 1024 
+            timeout: 8 * 60 * 1000,
+            maxBuffer: 10 * 1024 * 1024
         }, async (error, stdout, stderr) => {
             if (error) {
+                let errorMsg = error.message;
                 if (error.killed) {
+                    errorMsg = 'Timeout (8 menit)';
                     console.error(`[${script.name}] GAGAL: Timeout terdeteksi (8 menit)!\n`);
                 } else if (error.code === 'EAGAIN' && retryCount < 2) {
-                    // Retry untuk error EAGAIN (resource sementara tidak tersedia)
                     console.warn(`[${script.name}] EAGAIN terdeteksi, cleanup & retry dalam 10 detik...\n`);
                     killZombieChrome();
                     await delay(10000);
@@ -76,14 +87,17 @@ function runScript(script, retryCount = 0) {
                 } else {
                     console.error(`[${script.name}] GAGAL: ${error.message}\n`);
                 }
-                resolve(false);
+                resolve({ success: false, warnings: parseWarnings(outputBuffer), errorMsg });
             } else {
                 console.log(`[${script.name}] BERHASIL!\n`);
-                resolve(true);
+                resolve({ success: true, warnings: parseWarnings(outputBuffer), errorMsg: null });
             }
         });
 
-        child.stdout.on('data', (data) => process.stdout.write(`[${script.name}] ${data}`));
+        child.stdout.on('data', (data) => {
+            process.stdout.write(`[${script.name}] ${data}`);
+            outputBuffer += data;
+        });
         child.stderr.on('data', (data) => process.stderr.write(`[${script.name}] ERR: ${data}`));
     });
 }
@@ -102,11 +116,18 @@ async function runAll() {
 
     let successCount = 0;
     let failCount = 0;
+    const brandResults = [];
 
     for (let i = 0; i < scripts.length; i++) {
         const script = scripts[i];
-        const success = await runScript(script);
-        if (success) successCount++;
+        const result = await runScript(script);
+        brandResults.push({
+            name: script.name,
+            success: result.success,
+            warnings: result.warnings,
+            error_msg: result.errorMsg
+        });
+        if (result.success) successCount++;
         else failCount++;
 
         // Delay 3 detik antar scraper untuk memberi waktu OS reclaim resource
@@ -114,14 +135,15 @@ async function runAll() {
             await delay(3000);
         }
     }
-    
+
     // Kirim notifikasi ringkasan ke backend setelah semua selesai
     try {
         console.log("Mengirim notifikasi ringkasan ke backend...");
         await axios.post('https://api.nabungmas.my.id/api/gold-prices/notify-sync', {
             total_brand: scripts.length,
             success_count: successCount,
-            fail_count: failCount
+            fail_count: failCount,
+            brands: brandResults
         });
     } catch (notifErr) {
         console.error("Gagal mengirim notifikasi ringkasan:", notifErr.message);
