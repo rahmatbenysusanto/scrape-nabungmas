@@ -18,6 +18,8 @@ puppeteer.use(StealthPlugin());
 
         console.log("Mengakses web Emas Kita...");
         await page.goto('https://www.emaskita.id/Harga_emas', { waitUntil: 'networkidle2' });
+        // Tunggu sampai tabel harga benar-benar ada di DOM
+        await page.waitForSelector('table td.column1', { timeout: 30000 });
         const html = await page.content();
         await browser.close();
 

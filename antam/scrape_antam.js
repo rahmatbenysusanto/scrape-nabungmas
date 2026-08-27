@@ -123,28 +123,6 @@ puppeteer.use(StealthPlugin());
             console.log(`Antam 1g Delta: Buy=${antamDeltaBuy}, Buyback=${antamDeltaBuyback}`);
         }
 
-        // Cek apakah Brankas Antam sudah ada, jika belum tambahkan ke data
-        let brankasRow = data.find(row => 
-            row['Brand'] === 'Brankas Antam' && 
-            row['Category'] === 'Emas Digital'
-        );
-
-        if (!brankasRow) {
-            console.log("Menambahkan brand Brankas Antam Category Emas Digital ke Excel...");
-            // Inisialisasi awal jika belum ada, pakai harga Antam 1g sebagai basis
-            const initBuy = antamRefRow ? (parseInt(antamRefRow['Harga']) || 0) : 0;
-            const initBuyback = antamRefRow ? (parseInt(antamRefRow['Buyback']) || 0) : 0;
-            
-            brankasRow = {
-                'Brand': 'Brankas Antam',
-                'Category': 'Emas Digital',
-                'Berat': 1,
-                'Harga': initBuy,
-                'Buyback': initBuyback
-            };
-            data.push(brankasRow);
-        }
-
         let apiPayload = [];
 
         console.log("Memperbarui harga...");
@@ -154,14 +132,7 @@ puppeteer.use(StealthPlugin());
             let rowBerat = row['Berat'].toString().replace(',', '.');
             const beratNum = parseFloat(rowBerat);
 
-            if (brand === 'Brankas Antam' && category === 'Emas Digital') {
-                // Logic khusus Brankas Antam: Mengikuti kenaikan/penurunan Antam
-                if (foundAntamRef) {
-                    row['Harga'] = (parseInt(row['Harga']) || 0) + antamDeltaBuy;
-                    row['Buyback'] = (parseInt(row['Buyback']) || 0) + antamDeltaBuyback;
-                    console.log(`Updated Brankas Antam: Buy=${row['Harga']}, Buyback=${row['Buyback']}`);
-                }
-            } else {
+            {
                 // Update Harga Beli dari Web (untuk brand Antam reguler)
                 if (pricesBuy[category] && pricesBuy[category][beratNum]) {
                     row['Harga'] = pricesBuy[category][beratNum];

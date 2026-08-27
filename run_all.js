@@ -6,11 +6,12 @@ const axios = require('axios');
 
 const scripts = [
     { name: 'Antam', dir: 'antam', file: 'scrape_antam.js' },
+    { name: 'Antam Brankas', dir: 'antam-brankas', file: 'scrape_antam_brankas.js' },
     { name: 'EmasKita', dir: 'emaskita', file: 'scrape_emaskita.js' },
     { name: 'Emasku', dir: 'emasku', file: 'scrape_emasku.js' },
     { name: 'Gallery24', dir: 'gallery24', logo: 'gallery24.png', file: 'scrape_gallery24.js' },
     { name: 'King Halim', dir: 'kinghalim', file: 'scrape_kinghalim.js' },
-    { name: 'Lotus Archi', dir: 'lotusarchi', file: 'scrape_lotusarchi.js' },
+    // { name: 'Lotus Archi', dir: 'lotusarchi', file: 'scrape_lotusarchi.js' },
     { name: 'Sampoerna Gold', dir: 'sampoerna', file: 'scrape_sampoerna.js' },
     { name: 'Semar Nusantara', dir: 'semar', file: 'scrape_semar.js' },
     { name: 'Stargold', dir: 'stargold', file: 'scrape_stargold.js' },
